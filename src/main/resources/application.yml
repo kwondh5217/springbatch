@@ -28,18 +28,12 @@ spring:
 
 ---
 
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: e207.woojoobook@gmail.com
-    password: hpsp mtuu udnz znun
-    properties:
-      mail:
-        smtp:
-          auth: true
-          timeout: 5000
-          starttls:
-            enable: true
 
 ---
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
