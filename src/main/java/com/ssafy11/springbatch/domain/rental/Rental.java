@@ -3,23 +3,21 @@ package com.ssafy11.springbatch.domain.rental;
 import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.userbook.Userbook;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
+@ToString
 @Entity
 public class Rental {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	private User user;
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	private Userbook userbook;
 	private LocalDateTime startDate;
 	private LocalDateTime endDate;

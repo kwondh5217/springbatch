@@ -38,7 +38,7 @@ public class AppRunner implements ApplicationRunner {
     @Transactional
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        // initData();
+//         initData();
     }
 
     private void initData() {

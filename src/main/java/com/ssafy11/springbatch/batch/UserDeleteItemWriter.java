@@ -37,6 +37,10 @@ public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 			rentals.addAll(userDelete.getRentals());
 		}
 
+		userbooks.forEach(Userbook::removeUser);
+		wishBooks.forEach(WishBook::removeUser);
+		rentals.forEach(Rental::removeUser);
+
 		log.info("users size: " + users.size());
 		log.info("userbooks size: " + userbooks.size());
 		log.info("wishBooks size: " + wishBooks.size());

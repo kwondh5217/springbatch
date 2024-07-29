@@ -34,11 +34,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.util.Assert;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -78,7 +81,7 @@ public class OverdueJobConfig {
 	@Bean
 	public Step overduePersonalStep(PlatformTransactionManager transactionManager) {
 		return new StepBuilder("overduePersonalStep", jobRepository)
-			.<Rental, UserDelete>chunk(chunkSize, transactionManager)
+			.<User, UserDelete>chunk(chunkSize, transactionManager)
 			.reader(jpaCursorItemReader())
 			.processor(userDeleteProcessor())
 			.writer(userDeleteItemWriter())
@@ -87,25 +90,22 @@ public class OverdueJobConfig {
 	}
 
 	@Bean
-	public JpaCursorItemReader<Rental> jpaCursorItemReader() {
-		return new JpaCursorItemReaderBuilder<Rental>()
+	public JpaCursorItemReader<User> jpaCursorItemReader() {
+		return new JpaCursorItemReaderBuilder<User>()
 			.name("jpaCursorItemReader")
-			.entityManagerFactory(entityManagerFactory)
-			.queryString("SELECT r FROM Rental r WHERE r.endDate < CURRENT_TIMESTAMP AND r.rentalStatus = 'IN_PROGRESS'")
-			.build();
+				.entityManagerFactory(entityManagerFactory)
+				.queryString("SELECT u FROM User u JOIN u.rentals r WHERE r.endDate < CURRENT_TIMESTAMP AND r.rentalStatus = 'IN_PROGRESS' GROUP BY u.id")
+				.build();
 	}
 
 	@Bean
-	public ItemProcessor<Rental, UserDelete> userDeleteProcessor() {
-		return rental -> {
-			User user = rental.getUser();
-			List<Userbook> userbooks = user.getUserbooks();
-			List<WishBook> wishBooks = user.getWishBooks();
-			List<Rental> rentals = user.getRentals();
+	public ItemProcessor<User, UserDelete> userDeleteProcessor() {
+		return user -> {
+            Assert.notNull(user, "user is null");
 
-			userbooks.forEach(Userbook::removeUser);
-			wishBooks.forEach(WishBook::removeUser);
-			rentals.forEach(Rental::removeUser);
+			Set<Userbook> userbooks = user.getUserbooks().stream().collect(Collectors.toSet());
+			Set<Rental> rentals = user.getRentals().stream().collect(Collectors.toSet());
+			Set<WishBook> wishBooks = user.getWishBooks().stream().collect(Collectors.toSet());
 
 			return new UserDelete(user, userbooks, wishBooks, rentals);
 		};
