@@ -32,11 +32,11 @@ public class User implements Serializable{
 	private List<Point> points = new ArrayList<>();
 	@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Experience> experiences = new ArrayList<>();
-	@OneToMany(fetch = FetchType.EAGER)
+	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<Userbook> userbooks = new ArrayList<>();
 	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<WishBook> wishBooks = new ArrayList<>();
-	@OneToMany(fetch = FetchType.EAGER)
+	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<Rental> rentals = new ArrayList<>();
 
 
