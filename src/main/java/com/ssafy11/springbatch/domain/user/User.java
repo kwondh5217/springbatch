@@ -34,7 +34,7 @@ public class User implements Serializable{
 	private List<Experience> experiences = new ArrayList<>();
 	@OneToMany(fetch = FetchType.EAGER)
 	private List<Userbook> userbooks = new ArrayList<>();
-	@OneToMany(fetch = FetchType.EAGER)
+	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<WishBook> wishBooks = new ArrayList<>();
 	@OneToMany(fetch = FetchType.EAGER)
 	private List<Rental> rentals = new ArrayList<>();
