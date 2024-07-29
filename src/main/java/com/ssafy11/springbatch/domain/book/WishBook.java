@@ -25,4 +25,8 @@ public class WishBook {
 		this.user = user;
 		this.userbook = userbook;
 	}
+
+	public void removeUser() {
+		this.user = null;
+	}
 }

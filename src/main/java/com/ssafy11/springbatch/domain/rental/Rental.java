@@ -58,4 +58,8 @@ public class Rental {
 			this.extensionCount++;
 		}
 	}
+
+	public void removeUser() {
+		this.user = null;
+	}
 }

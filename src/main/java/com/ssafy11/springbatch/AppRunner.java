@@ -2,11 +2,17 @@ package com.ssafy11.springbatch;
 
 import com.ssafy11.springbatch.domain.book.Book;
 import com.ssafy11.springbatch.domain.book.BookRepository;
+import com.ssafy11.springbatch.domain.book.WishBook;
+import com.ssafy11.springbatch.domain.book.WishBookRepository;
 import com.ssafy11.springbatch.domain.rental.Rental;
 import com.ssafy11.springbatch.domain.rental.RentalRepository;
 import com.ssafy11.springbatch.domain.rental.RentalStatus;
 import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.user.UserRepository;
+import com.ssafy11.springbatch.domain.user.experience.ExperienceRepository;
+import com.ssafy11.springbatch.domain.user.point.Point;
+import com.ssafy11.springbatch.domain.user.point.PointHistory;
+import com.ssafy11.springbatch.domain.user.point.PointRepository;
 import com.ssafy11.springbatch.domain.userbook.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
@@ -25,6 +31,9 @@ public class AppRunner implements ApplicationRunner {
     private final UserbookRepository userbookRepository;
     private final RentalRepository rentalRepository;
     private final BookRepository bookRepository;
+    private final PointRepository pointRepository;
+    private final WishBookRepository wishBookRepository;
+    private final ExperienceRepository experienceRepository;
 
     @Transactional
     @Override
@@ -39,10 +48,14 @@ public class AppRunner implements ApplicationRunner {
                 .nickname("owner")
                 .password("password")
                 .areaCode("1111")
-                .point(1000L)
-                .experience(1000L)
                 .build();
         owner = this.userRepository.save(owner);
+        Point ownerPoint = Point.builder()
+            .user(owner)
+            .history(PointHistory.BOOK_RENTAL)
+            .amount(PointHistory.BOOK_RENTAL.getAmount())
+            .build();
+        this.pointRepository.save(ownerPoint);
 
         // 대여자
         User rentalUser = User.builder()
@@ -50,8 +63,6 @@ public class AppRunner implements ApplicationRunner {
                 .nickname("rentalUser")
                 .password("password")
                 .areaCode("1111")
-                .point(1000L)
-                .experience(1000L)
                 .build();
         rentalUser = this.userRepository.save(rentalUser);
 
@@ -77,14 +88,51 @@ public class AppRunner implements ApplicationRunner {
                 .build();
         userbook = this.userbookRepository.save(userbook);
 
-        // 대여
-        Rental rental = Rental.builder()
+        // 관심 도서
+        WishBook wishBook = WishBook.builder()
+            .user(rentalUser)
+            .userbook(userbook)
+            .build();
+        wishBook = this.wishBookRepository.save(wishBook);
+
+        // 대여 A
+        Rental rentalA = Rental.builder()
                 .user(rentalUser)
                 .userbook(userbook)
                 .rentalStatus(RentalStatus.IN_PROGRESS)
-                .startDate(LocalDateTime.of(24, 05, 01, 12, 00, 00))
-                .endDate(LocalDateTime.of(24, 05, 10, 12, 00, 00))
+                .startDate(LocalDateTime.of(2024, 05, 01, 12, 00, 00))
+                .endDate(LocalDateTime.of(2024, 05, 10, 12, 00, 00))
                 .build();
-        rental = this.rentalRepository.save(rental);
+        rentalA = this.rentalRepository.save(rentalA);
+
+        // 대여 B
+        Rental rentalB = Rental.builder()
+            .user(rentalUser)
+            .userbook(userbook)
+            .rentalStatus(RentalStatus.IN_PROGRESS)
+            .startDate(LocalDateTime.of(2024, 05, 01, 12, 00, 00))
+            .endDate(LocalDateTime.of(2024, 05, 03, 12, 00, 00))
+            .build();
+        rentalB = this.rentalRepository.save(rentalB);
+
+        // 대여 C
+        Rental rentalC = Rental.builder()
+            .user(rentalUser)
+            .userbook(userbook)
+            .rentalStatus(RentalStatus.IN_PROGRESS)
+            .startDate(LocalDateTime.of(2024, 05, 01, 12, 00, 00))
+            .endDate(LocalDateTime.of(2024, 07, 27, 12, 00, 00))
+            .build();
+        rentalC = this.rentalRepository.save(rentalC);
+
+        // 대여 D
+        Rental rentalD = Rental.builder()
+            .user(rentalUser)
+            .userbook(userbook)
+            .rentalStatus(RentalStatus.IN_PROGRESS)
+            .startDate(LocalDateTime.of(2024, 05, 01, 12, 00, 00))
+            .endDate(LocalDateTime.of(2024, 8, 04, 12, 00, 00))
+            .build();
+        rentalD = this.rentalRepository.save(rentalD);
     }
 }
