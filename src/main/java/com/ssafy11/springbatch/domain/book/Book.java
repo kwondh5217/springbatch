@@ -6,12 +6,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 @Getter
 @NoArgsConstructor
 @Entity
-public class Book {
+public class Book implements Serializable {
 	@Id
 	private String isbn;
 	private String title;

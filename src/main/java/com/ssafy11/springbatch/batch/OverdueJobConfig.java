@@ -1,17 +1,10 @@
 package com.ssafy11.springbatch.batch;
 
-import com.ssafy11.springbatch.domain.book.WishBook;
-import com.ssafy11.springbatch.domain.rental.Rental;
-import com.ssafy11.springbatch.domain.user.User;
-import com.ssafy11.springbatch.domain.user.experience.Experience;
-import com.ssafy11.springbatch.domain.user.experience.ExperienceHistory;
-import com.ssafy11.springbatch.domain.user.point.Point;
-import com.ssafy11.springbatch.domain.user.point.PointHistory;
-import com.ssafy11.springbatch.domain.userbook.Userbook;
-
-import jakarta.persistence.EntityManagerFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.springframework.batch.core.ChunkListener;
 import org.springframework.batch.core.Job;
@@ -36,12 +29,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.ssafy11.springbatch.domain.book.WishBook;
+import com.ssafy11.springbatch.domain.rental.Rental;
+import com.ssafy11.springbatch.domain.user.User;
+import com.ssafy11.springbatch.domain.user.experience.Experience;
+import com.ssafy11.springbatch.domain.user.experience.ExperienceHistory;
+import com.ssafy11.springbatch.domain.user.point.Point;
+import com.ssafy11.springbatch.domain.user.point.PointHistory;
+import com.ssafy11.springbatch.domain.userbook.Userbook;
+
+import jakarta.persistence.EntityManagerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -54,6 +53,8 @@ public class OverdueJobConfig {
 	private int chunkSize;
 	private static final String PENALTY_SUBJECT = "우주도서 연체 알림";
 	private static final String PENALTY_TEXT = "포인트와 경험치가 차감되었습니다.";
+	private static final String USER_DELETE_SUBJECT = "우주도서 회원 탈퇴 처리 안내";
+	private static final String USER_DELETE_TEXT = "이용 규칙 위반으로 회원탈퇴 처리 되었습니다.";
 
 	@Value("${chunkSize:1000}")
 	public void setChunkSize(int chunkSize) {
@@ -64,48 +65,71 @@ public class OverdueJobConfig {
 	public Job overdueJob(PlatformTransactionManager transactionManager) {
 		return new JobBuilder("overdueJob", jobRepository)
 			.start(overduePersonalStep(transactionManager))
+			.next(overdueDeleteUserStep(transactionManager))
 			.build();
 	}
-
-	// @Bean
-	// public Step overduePersonalStep(PlatformTransactionManager transactionManager) {
-	// 	return new StepBuilder("overduePersonalStep", jobRepository)
-	// 		.<Rental, UserPersonal>chunk(chunkSize, transactionManager)
-	// 		.reader(jpaCursorItemReader())
-	// 		.processor(overdueProcessor(null))
-	// 		.writer(userPersonalItemWriter())
-	// 		.listener(chunkListener(PENALTY_SUBJECT, PENALTY_TEXT))
-	// 		.build();
-	// }
 
 	@Bean
 	public Step overduePersonalStep(PlatformTransactionManager transactionManager) {
 		return new StepBuilder("overduePersonalStep", jobRepository)
-			.<User, UserDelete>chunk(chunkSize, transactionManager)
-			.reader(jpaCursorItemReader())
-			.processor(userDeleteProcessor())
-			.writer(userDeleteItemWriter())
+			.<Rental, UserPersonal>chunk(chunkSize, transactionManager)
+			.reader(jpaRentalCursorItemReader())
+			.processor(overdueProcessor(null))
+			.writer(userPersonalItemWriter())
 			.listener(chunkListener(PENALTY_SUBJECT, PENALTY_TEXT))
 			.build();
 	}
 
 	@Bean
-	public JpaCursorItemReader<User> jpaCursorItemReader() {
+	public Step overdueDeleteUserStep(PlatformTransactionManager transactionManager) {
+		return new StepBuilder("overdueDeleteUserStep", jobRepository)
+			.<User, UserDelete>chunk(chunkSize, transactionManager)
+			.reader(jpaUserCursorItemReader())
+			.processor(userDeleteProcessor())
+			.writer(userDeleteItemWriter())
+			.listener(chunkListener(USER_DELETE_SUBJECT, USER_DELETE_TEXT))
+			.build();
+	}
+
+	@Bean
+	public JpaCursorItemReader<User> jpaUserCursorItemReader() {
 		return new JpaCursorItemReaderBuilder<User>()
-			.name("jpaCursorItemReader")
-				.entityManagerFactory(entityManagerFactory)
-				.queryString("SELECT u FROM User u JOIN u.rentals r WHERE r.endDate < CURRENT_TIMESTAMP AND r.rentalStatus = 'IN_PROGRESS' GROUP BY u.id")
-				.build();
+			.name("jpaUserCursorItemReader")
+			.entityManagerFactory(entityManagerFactory)
+			.queryString(
+				"SELECT u FROM User u WHERE u.id IN (SELECT u.id FROM User u JOIN u.rentals r WHERE r.endDate < :threeDaysAgo AND r.rentalStatus = 'IN_PROGRESS' GROUP BY u.id) OR u.id IN (SELECT p.user.id FROM Point p GROUP BY p.user.id HAVING SUM(p.amount) < 0)")
+			.parameterValues(Collections.singletonMap("threeDaysAgo", LocalDateTime.now().minusDays(3)))
+			.build();
+	}
+
+	@Bean
+	public JpaCursorItemReader<Rental> jpaRentalCursorItemReader() {
+		return new JpaCursorItemReaderBuilder<Rental>()
+			.name("jpaRentalCursorItemReader")
+			.entityManagerFactory(entityManagerFactory)
+			.queryString(
+				"SELECT r FROM Rental r WHERE r.endDate < CURRENT_TIMESTAMP AND r.rentalStatus = 'IN_PROGRESS'")
+			.build();
 	}
 
 	@Bean
 	public ItemProcessor<User, UserDelete> userDeleteProcessor() {
 		return user -> {
-            Assert.notNull(user, "user is null");
+			Assert.notNull(user, "user is null");
 
-			Set<Userbook> userbooks = user.getUserbooks().stream().collect(Collectors.toSet());
-			Set<Rental> rentals = user.getRentals().stream().collect(Collectors.toSet());
-			Set<WishBook> wishBooks = user.getWishBooks().stream().collect(Collectors.toSet());
+			List<Userbook> userbooks = user.getUserbooks();
+			List<Rental> rentals = user.getRentals();
+			List<WishBook> wishBooks = user.getWishBooks();
+
+			ExecutionContext executionContext = StepSynchronizationManager.getContext()
+				.getStepExecution()
+				.getExecutionContext();
+			List<User> users = (List<User>)executionContext.get("users");
+			if (users == null) {
+				users = new ArrayList<>();
+				executionContext.put("users", users);
+			}
+			users.add(user);
 
 			return new UserDelete(user, userbooks, wishBooks, rentals);
 		};
@@ -114,13 +138,10 @@ public class OverdueJobConfig {
 	@Bean
 	@StepScope
 	public ItemProcessor<Rental, UserPersonal> overdueProcessor(
-		@Value("#{jobParameters['currentTime']}") String currentTime) {
-		Thread thread = Thread.currentThread();
-		log.info("processor Thread : {}", thread.getName());
+		@Value("#{jobParameters['currentDate']}") LocalDate currentDate) {
 		return rental -> {
-			LocalDate today = LocalDate.now();
+			LocalDate today = currentDate;
 			LocalDate endDate = rental.getEndDate().toLocalDate();
-			long daysOverdue = ChronoUnit.DAYS.between(endDate, today);
 
 			User user = rental.getUser();
 
@@ -158,36 +179,13 @@ public class OverdueJobConfig {
 	}
 
 	@Bean
-	public ItemWriter<UserDelete> userDeleteItemWriter () {
-		return new UserDeleteItemWriter(userItemWriter(), userbookItemWriter(), wishBookItemWriter(), rentalItemWriter());
+	public ItemWriter<UserDelete> userDeleteItemWriter() {
+		return new UserDeleteItemWriter(userItemWriter(), entityManagerFactory.createEntityManager());
 	}
 
 	@Bean
 	public JpaItemWriter<User> userItemWriter() {
-		return new JpaItemWriterBuilder<User>()
-			.entityManagerFactory(entityManagerFactory)
-			.build();
-	}
-
-	@Bean
-	public JpaItemWriter<Userbook> userbookItemWriter() {
-		return new JpaItemWriterBuilder<Userbook>()
-			.entityManagerFactory(entityManagerFactory)
-			.build();
-	}
-
-	@Bean
-	public JpaItemWriter<WishBook> wishBookItemWriter() {
-		return new JpaItemWriterBuilder<WishBook>()
-			.entityManagerFactory(entityManagerFactory)
-			.build();
-	}
-
-	@Bean
-	public JpaItemWriter<Rental> rentalItemWriter() {
-		return new JpaItemWriterBuilder<Rental>()
-			.entityManagerFactory(entityManagerFactory)
-			.build();
+		return new DeleteJpaItemWriter<>(entityManagerFactory);
 	}
 
 	@Bean

@@ -1,6 +1,8 @@
 package com.ssafy11.springbatch.domain.user.experience;
 
 
+import java.io.Serializable;
+
 import com.ssafy11.springbatch.domain.user.User;
 
 import jakarta.persistence.Entity;
@@ -18,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Entity
-public class Experience {
+public class Experience implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;

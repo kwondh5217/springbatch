@@ -1,5 +1,7 @@
 package com.ssafy11.springbatch.domain.book;
 
+import java.io.Serializable;
+
 import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.userbook.Userbook;
 import jakarta.persistence.*;
@@ -11,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Entity
-public class WishBook {
+public class WishBook implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;

@@ -11,6 +11,7 @@ import com.ssafy11.springbatch.domain.rental.Rental;
 import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.userbook.Userbook;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,9 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 
 	private final ItemWriter<User> userWriter;
-	private final ItemWriter<Userbook> userbookItemWriter;
-	private final ItemWriter<WishBook> wishBookItemWriter;
-	private final ItemWriter<Rental> rentalItemWriter;
+	private final EntityManager entityManager;
 
 	@Override
 	public void write(Chunk<? extends UserDelete> chunk) throws Exception {
@@ -37,9 +36,7 @@ public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 			rentals.addAll(userDelete.getRentals());
 		}
 
-		userbooks.forEach(Userbook::removeUser);
-		wishBooks.forEach(WishBook::removeUser);
-		rentals.forEach(Rental::removeUser);
+		removeMappings(userbooks, wishBooks, rentals);
 
 		log.info("users size: " + users.size());
 		log.info("userbooks size: " + userbooks.size());
@@ -47,8 +44,39 @@ public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 		log.info("rentals size: " + rentals.size());
 
 		userWriter.write(new Chunk<>(users));
-		userbookItemWriter.write(new Chunk<>(userbooks));
-		wishBookItemWriter.write(new Chunk<>(wishBooks));
-		rentalItemWriter.write(new Chunk<>(rentals));
+	}
+
+	public void removeMappings(List<Userbook> userbooks, List<WishBook> wishBooks, List<Rental> rentals) {
+		entityManager.getTransaction().begin();
+
+		rentals.forEach(rental -> {
+			if (entityManager.contains(rental)) {
+				rental.removeUser();
+			} else {
+				Rental merge = entityManager.merge(rental);
+				merge.removeUser();
+			}
+		});
+
+		wishBooks.forEach(wishBook -> {
+			if (entityManager.contains(wishBook)) {
+				wishBook.removeUser();
+			} else {
+				WishBook merge = entityManager.merge(wishBook);
+				merge.removeUser();
+			}
+		});
+
+		userbooks.forEach(userbook -> {
+			if (entityManager.contains(userbook)) {
+				userbook.removeUser();
+			} else {
+				Userbook merge = entityManager.merge(userbook);
+				merge.removeUser();
+			}
+		});
+
+		entityManager.flush();
+		entityManager.getTransaction().commit();
 	}
 }

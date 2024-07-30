@@ -28,9 +28,9 @@ public class User implements Serializable{
 	private String password;
 	private String nickname;
 	private String areaCode;
-	@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "user")
 	private List<Point> points = new ArrayList<>();
-	@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "user")
 	private List<Experience> experiences = new ArrayList<>();
 	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<Userbook> userbooks = new ArrayList<>();
@@ -38,8 +38,6 @@ public class User implements Serializable{
 	private List<WishBook> wishBooks = new ArrayList<>();
 	@OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
 	private List<Rental> rentals = new ArrayList<>();
-
-
 
 	@Builder
 	private User(String email, String password, String nickname, String areaCode) {

@@ -2,6 +2,8 @@ package com.ssafy11.springbatch.domain.user.point;
 
 
 
+import java.io.Serializable;
+
 import com.ssafy11.springbatch.domain.user.User;
 
 import jakarta.persistence.Entity;
@@ -19,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @Entity
-public class Point {
+public class Point implements Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
