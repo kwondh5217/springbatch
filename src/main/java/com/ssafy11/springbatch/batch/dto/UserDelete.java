@@ -1,4 +1,4 @@
-package com.ssafy11.springbatch.batch;
+package com.ssafy11.springbatch.batch.dto;
 
 import java.util.List;
 

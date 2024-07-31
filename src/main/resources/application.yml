@@ -2,7 +2,6 @@ spring:
   config:
     activate:
       on-profile: local
-
 ---
 spring:
   config:
@@ -25,15 +24,32 @@ spring:
       username: root
       password: pass
       driver-class-name: com.mysql.cj.jdbc.Driver
-
 ---
-
-
----
-
 spring:
-  jpa:
-    properties:
-      hibernate:
-        format_sql: true
-        show_sql: true
+  profiles:
+    include: auth
+---
+#spring:
+#  jpa:
+#    properties:
+#      hibernate:
+#        format_sql: true
+#        show_sql: true
+---
+mail:
+  overdue:
+    penalty:
+      subject: "우주도서 연체 알림"
+      text: "포인트와 경험치가 차감되었습니다."
+    delete:
+      subject: "우주도서 회원 탈퇴 처리 안내"
+      text: "이용 규칙 위반으로 회원탈퇴 처리 되었습니다."
+---
+overdue:
+  days: 3
+
+---
+#spring:
+#  jpa:
+#    hibernate:
+#      ddl-auto: create
