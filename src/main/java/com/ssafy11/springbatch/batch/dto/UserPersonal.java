@@ -1,6 +1,5 @@
-package com.ssafy11.springbatch.batch;
+package com.ssafy11.springbatch.batch.dto;
 
-import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.user.experience.Experience;
 import com.ssafy11.springbatch.domain.user.point.Point;
 
@@ -12,7 +11,6 @@ import lombok.ToString;
 public class UserPersonal {
 	private Point point;
 	private Experience experience;
-	private User user;
 
 	public UserPersonal(Point point, Experience experience) {
 		this.point = point;

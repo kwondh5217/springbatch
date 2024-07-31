@@ -1,17 +1,21 @@
-package com.ssafy11.springbatch.batch;
+package com.ssafy11.springbatch.batch.writer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.orm.jpa.EntityManagerFactoryUtils;
 
+import com.ssafy11.springbatch.batch.dto.UserDelete;
 import com.ssafy11.springbatch.domain.book.WishBook;
 import com.ssafy11.springbatch.domain.rental.Rental;
 import com.ssafy11.springbatch.domain.user.User;
 import com.ssafy11.springbatch.domain.userbook.Userbook;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,8 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 
-	private final ItemWriter<User> userWriter;
-	private final EntityManager entityManager;
+	private final EntityManagerFactory entityManagerFactory;
 
 	@Override
 	public void write(Chunk<? extends UserDelete> chunk) throws Exception {
@@ -36,19 +39,20 @@ public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 			rentals.addAll(userDelete.getRentals());
 		}
 
-		removeMappings(userbooks, wishBooks, rentals);
+		log.info("user count : {}", users.size());
 
-		log.info("users size: " + users.size());
-		log.info("userbooks size: " + userbooks.size());
-		log.info("wishBooks size: " + wishBooks.size());
-		log.info("rentals size: " + rentals.size());
+		EntityManager entityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(entityManagerFactory);
+		if (entityManager == null) {
+			throw new DataAccessResourceFailureException("Unable to obtain a transactional EntityManager");
+		}
+		doWrite(rentals, entityManager, wishBooks, userbooks);
+		deleteUser(entityManager, users);
 
-		userWriter.write(new Chunk<>(users));
+		entityManager.flush();
 	}
 
-	public void removeMappings(List<Userbook> userbooks, List<WishBook> wishBooks, List<Rental> rentals) {
-		entityManager.getTransaction().begin();
-
+	private void doWrite(List<Rental> rentals, EntityManager entityManager, List<WishBook> wishBooks,
+		List<Userbook> userbooks) {
 		rentals.forEach(rental -> {
 			if (entityManager.contains(rental)) {
 				rental.removeUser();
@@ -75,8 +79,16 @@ public class UserDeleteItemWriter implements ItemWriter<UserDelete> {
 				merge.removeUser();
 			}
 		});
+	}
 
-		entityManager.flush();
-		entityManager.getTransaction().commit();
+	private void deleteUser(EntityManager entityManager, List<User> users) {
+		users.forEach(user -> {
+			if(entityManager.contains(user)) {
+				entityManager.remove(user);
+			} else {
+				User merge = entityManager.merge(user);
+				entityManager.remove(merge);
+			}
+		});
 	}
 }

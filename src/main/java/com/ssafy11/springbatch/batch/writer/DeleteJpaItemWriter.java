@@ -1,4 +1,4 @@
-package com.ssafy11.springbatch.batch;
+package com.ssafy11.springbatch.batch.writer;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

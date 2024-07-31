@@ -29,6 +29,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
 
+import com.ssafy11.springbatch.batch.dto.UserDelete;
+import com.ssafy11.springbatch.batch.dto.UserPersonal;
+import com.ssafy11.springbatch.batch.writer.UserDeleteItemWriter;
+import com.ssafy11.springbatch.batch.writer.UserPersonalItemWriter;
 import com.ssafy11.springbatch.domain.book.WishBook;
 import com.ssafy11.springbatch.domain.rental.Rental;
 import com.ssafy11.springbatch.domain.user.User;
@@ -50,6 +54,7 @@ public class OverdueJobConfig {
 	private final JobRepository jobRepository;
 	private final EntityManagerFactory entityManagerFactory;
 	private final EmailSender emailSender;
+	private final PlatformTransactionManager transactionManager;
 	private int chunkSize;
 	private static final String PENALTY_SUBJECT = "우주도서 연체 알림";
 	private static final String PENALTY_TEXT = "포인트와 경험치가 차감되었습니다.";
@@ -62,32 +67,34 @@ public class OverdueJobConfig {
 	}
 
 	@Bean
-	public Job overdueJob(PlatformTransactionManager transactionManager) {
+	public Job overdueJob() {
 		return new JobBuilder("overdueJob", jobRepository)
-			.start(overduePersonalStep(transactionManager))
-			.next(overdueDeleteUserStep(transactionManager))
+			.start(overduePersonalStep())
+			.next(overdueDeleteUserStep())
 			.build();
 	}
 
 	@Bean
-	public Step overduePersonalStep(PlatformTransactionManager transactionManager) {
+	public Step overduePersonalStep() {
 		return new StepBuilder("overduePersonalStep", jobRepository)
 			.<Rental, UserPersonal>chunk(chunkSize, transactionManager)
 			.reader(jpaRentalCursorItemReader())
 			.processor(overdueProcessor(null))
 			.writer(userPersonalItemWriter())
 			.listener(chunkListener(PENALTY_SUBJECT, PENALTY_TEXT))
+			.startLimit(5)
 			.build();
 	}
 
 	@Bean
-	public Step overdueDeleteUserStep(PlatformTransactionManager transactionManager) {
+	public Step overdueDeleteUserStep() {
 		return new StepBuilder("overdueDeleteUserStep", jobRepository)
 			.<User, UserDelete>chunk(chunkSize, transactionManager)
 			.reader(jpaUserCursorItemReader())
 			.processor(userDeleteProcessor())
 			.writer(userDeleteItemWriter())
 			.listener(chunkListener(USER_DELETE_SUBJECT, USER_DELETE_TEXT))
+			.startLimit(5)
 			.build();
 	}
 
@@ -138,11 +145,8 @@ public class OverdueJobConfig {
 	@Bean
 	@StepScope
 	public ItemProcessor<Rental, UserPersonal> overdueProcessor(
-		@Value("#{jobParameters['currentDate']}") LocalDate currentDate) {
+		@Value("#{jobParameters['currentDate']}") String currentDate) {
 		return rental -> {
-			LocalDate today = currentDate;
-			LocalDate endDate = rental.getEndDate().toLocalDate();
-
 			User user = rental.getUser();
 
 			ExecutionContext executionContext = StepSynchronizationManager.getContext()
@@ -180,12 +184,7 @@ public class OverdueJobConfig {
 
 	@Bean
 	public ItemWriter<UserDelete> userDeleteItemWriter() {
-		return new UserDeleteItemWriter(userItemWriter(), entityManagerFactory.createEntityManager());
-	}
-
-	@Bean
-	public JpaItemWriter<User> userItemWriter() {
-		return new DeleteJpaItemWriter<>(entityManagerFactory);
+		return new UserDeleteItemWriter(entityManagerFactory);
 	}
 
 	@Bean
@@ -202,7 +201,6 @@ public class OverdueJobConfig {
 			.build();
 	}
 
-	@Bean
 	public ChunkListener chunkListener(String subject, String text) {
 		return new ChunkListener() {
 			@Override

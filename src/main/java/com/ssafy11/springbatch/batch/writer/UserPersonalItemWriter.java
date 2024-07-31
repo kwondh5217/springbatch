@@ -1,4 +1,4 @@
-package com.ssafy11.springbatch.batch;
+package com.ssafy11.springbatch.batch.writer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 
+import com.ssafy11.springbatch.batch.dto.UserPersonal;
 import com.ssafy11.springbatch.domain.user.experience.Experience;
 import com.ssafy11.springbatch.domain.user.point.Point;
 
